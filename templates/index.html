@@ -1,10 +1,79 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Live Testing</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Face Detection</title>
+    <style>
+        body {
+            text-align: center;
+        }
+        #video {
+            max-width: 100%;
+            height: auto;
+            display: none; /* Hide video initially */
+        }
+    </style>
 </head>
 <body>
-    <h1>Testing Server</h1>
-    <img src="{{ url_for('video_feed') }}" width="720">
+    <h1>Live Face Detection Web App</h1>
+    <video id="video" autoplay playsinline></video>
+    <div>
+        <button id="start-camera">Start Camera</button>
+        <button id="stop-camera" disabled>Stop Camera</button>
+        <button id="switch-camera" disabled>Switch Camera</button>
+        <p id="message" style="color:red;"></p>
+    </div>
+
+    <script>
+        let currentStream;
+        let facingMode = 'user'; // 'user' for front camera, 'environment' for back camera
+
+        const video = document.getElementById('video');
+        const startCameraButton = document.getElementById('start-camera');
+        const stopCameraButton = document.getElementById('stop-camera');
+        const switchCameraButton = document.getElementById('switch-camera');
+        const message = document.getElementById('message');
+
+        async function startVideo() {
+            try {
+                const constraints = {
+                    video: { facingMode: facingMode }
+                };
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = currentStream;
+                video.style.display = 'block'; // Show video element
+                startCameraButton.disabled = true; // Disable the start button
+                stopCameraButton.disabled = false; // Enable the stop button
+                switchCameraButton.disabled = false; // Enable the switch button
+                message.textContent = ''; // Clear any previous messages
+            } catch (error) {
+                console.error('Error accessing camera: ', error);
+                message.textContent = 'No camera found or permission denied.';
+            }
+        }
+
+        function stopVideo() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                video.style.display = 'none'; // Hide video element
+                startCameraButton.disabled = false; // Enable the start button
+                stopCameraButton.disabled = true; // Disable the stop button
+                switchCameraButton.disabled = true; // Disable the switch button
+            }
+        }
+
+        startCameraButton.addEventListener('click', startVideo);
+        stopCameraButton.addEventListener('click', stopVideo);
+        switchCameraButton.addEventListener('click', () => {
+            stopVideo(); // Stop current stream
+            facingMode = facingMode === 'user' ? 'environment' : 'user'; // Toggle camera
+            startVideo(); // Start the new camera
+        });
+
+        // Optional: Automatically try to start the camera when the page loads
+        // startVideo();
+    </script>
 </body>
 </html>

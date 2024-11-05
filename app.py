@@ -1,42 +1,43 @@
+from flask import Flask, render_template, Response
 import cv2
 
-# Load the pre-trained Haar cascade classifier for face detection
+app = Flask(__name__)
+
+# Load the Haar Cascade for face detection
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-# Initialize the webcam; use 1 for the front camera (may vary by device)
-cap = cv2.VideoCapture(1)  # Use 1 for front camera
+def generate_frames():
+    cap = cv2.VideoCapture(0)  # Use the front camera (might need to adjust this for your setup)
 
-# Check if the camera opened successfully
-if not cap.isOpened():
-    print("Error: Could not open front camera.")
-    exit()
+    while True:
+        success, frame = cap.read()  # Read the frame from the camera
+        if not success:
+            break
 
-while True:
-    # Capture frame-by-frame
-    ret, frame = cap.read()
-    
-    # Check if the frame was captured successfully
-    if not ret:
-        print("Error: Could not read frame.")
-        break
+        # Convert to grayscale
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # Detect faces
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
 
-    # Convert frame to grayscale for better accuracy
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # Draw rectangles around the faces
+        for (x, y, w, h) in faces:
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
-    # Detect faces in the frame
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+        # Encode the frame in JPEG format
+        ret, buffer = cv2.imencode('.jpg', frame)
+        frame = buffer.tobytes()
 
-    # Draw rectangle around the faces
-    for (x, y, w, h) in faces:
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+        # Yield the frame to the client
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-    # Display the resulting frame
-    cv2.imshow('Face Detection', frame)
+@app.route('/video_feed')
+def video_feed():
+    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-    # Break the loop on 'q' key press
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-# Release the capture and close the window
-cap.release()
-cv2.destroyAllWindows()
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
