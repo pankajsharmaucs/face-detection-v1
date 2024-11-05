@@ -5,75 +5,112 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Face Detection</title>
     <style>
-        body {
+        #video-container {
+            max-width: 640px;
+            margin: 0 auto;
             text-align: center;
         }
-        #video {
-            max-width: 100%;
-            height: auto;
-            display: none; /* Hide video initially */
+        .videoBox {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #000;
         }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #status-message {
+            margin-top: 20px;
+            font-size: 16px;
+            color: green; /* You can change color based on the status (red for errors, etc.) */
+        }
+
     </style>
 </head>
 <body>
-    <h1>Live Face Detection Web App</h1>
-    <video id="video" autoplay playsinline></video>
-    <div>
-        <button id="start-camera">Start Camera</button>
-        <button id="stop-camera" disabled>Stop Camera</button>
-        <button id="switch-camera" disabled>Switch Camera</button>
-        <p id="message" style="color:red;"></p>
+    <div id="video-container">
+        <h1>Live Face Detection</h1>
+        <img id="video-stream" class="videoBox" src="" alt="Live Video Feed">
+        <div>
+            <button id="start-btn">Start Camera</button>
+            <button id="stop-btn">Stop Camera</button>
+            <button id="change-btn">Change Camera</button>
+        </div>
+
+        <div id="status-message"></div> <!-- Status message area -->
+
     </div>
 
     <script>
-        let currentStream;
-        let facingMode = 'user'; // 'user' for front camera, 'environment' for back camera
-
-        const video = document.getElementById('video');
-        const startCameraButton = document.getElementById('start-camera');
-        const stopCameraButton = document.getElementById('stop-camera');
-        const switchCameraButton = document.getElementById('switch-camera');
-        const message = document.getElementById('message');
-
-        async function startVideo() {
-            try {
-                const constraints = {
-                    video: { facingMode: facingMode }
-                };
-                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = currentStream;
-                video.style.display = 'block'; // Show video element
-                startCameraButton.disabled = true; // Disable the start button
-                stopCameraButton.disabled = false; // Enable the stop button
-                switchCameraButton.disabled = false; // Enable the switch button
-                message.textContent = ''; // Clear any previous messages
-            } catch (error) {
-                console.error('Error accessing camera: ', error);
-                message.textContent = 'No camera found or permission denied.';
-            }
+        function updateStatusMessage(message, isError = false) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.textContent = message;
+            statusDiv.style.color = isError ? 'red' : 'green'; // Change color based on error status
         }
 
-        function stopVideo() {
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-                video.srcObject = null;
-                video.style.display = 'none'; // Hide video element
-                startCameraButton.disabled = false; // Enable the start button
-                stopCameraButton.disabled = true; // Disable the stop button
-                switchCameraButton.disabled = true; // Disable the switch button
-            }
+        function startCamera() {
+            fetch('/start_camera', { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log(data);
+                    document.getElementById('video-stream').src = "/video_feed";  // Set img source
+                    updateStatusMessage(data.status); // Display success message
+                })
+                .catch(error => {
+                    console.error('Error starting camera:', error);
+                    updateStatusMessage('Error starting camera: ' + error.message, true);
+                });
         }
 
-        startCameraButton.addEventListener('click', startVideo);
-        stopCameraButton.addEventListener('click', stopVideo);
-        switchCameraButton.addEventListener('click', () => {
-            stopVideo(); // Stop current stream
-            facingMode = facingMode === 'user' ? 'environment' : 'user'; // Toggle camera
-            startVideo(); // Start the new camera
-        });
+        function stopCamera() {
+            fetch('/stop_camera', { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log(data);
+                    document.getElementById('video-stream').src = "";  // Clear the img source
+                    updateStatusMessage(data.status); // Display success message
+                })
+                .catch(error => {
+                    console.error('Error stopping camera:', error);
+                    updateStatusMessage('Error stopping camera: ' + error.message, true);
+                });
+        }
 
-        // Optional: Automatically try to start the camera when the page loads
-        // startVideo();
+        function changeCamera() {
+            fetch('/change_camera', { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log(data);
+                    document.getElementById('video-stream').src = "/video_feed";  // Restart video stream
+                    updateStatusMessage(data.status); // Display success message
+                })
+                .catch(error => {
+                    console.error('Error changing camera:', error);
+                    updateStatusMessage('Error changing camera: ' + error.message, true);
+                });
+        }
+
+        document.getElementById('start-btn').addEventListener('click', startCamera);
+        document.getElementById('stop-btn').addEventListener('click', stopCamera);
+        document.getElementById('change-btn').addEventListener('click', changeCamera);
     </script>
 </body>
 </html>
