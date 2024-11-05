@@ -2,7 +2,16 @@ from flask import Flask, Response, render_template
 import cv2
 
 app = Flask(__name__)
-camera = cv2.VideoCapture(0)  # Use 0 for the webcam
+# camera = cv2.VideoCapture(0)  # Use 0 for the webcam
+
+for index in range(5):  # Test the first 5 indices
+    camera = cv2.VideoCapture(index)
+    if camera.isOpened():
+        print(f"Camera {index} is available.")
+        camera.release()
+    else:
+        print(f"Camera {index} is not available.")
+
 
 # Load pre-trained face detection model
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
